@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charging Widget</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: transparent;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .widget-wrapper {
+            position: fixed;
+            right: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 0;
+            pointer-events: none;
+        }
+
+        .toggle-btn {
+            display: none;
+            width: 24px;
+            height: 60px;
+            background: linear-gradient(180deg, rgba(30,30,40,0.95), rgba(20,20,30,0.95));
+            border: 2px solid rgba(var(--brand-rgb), 0.3);
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+            color: var(--brand-color);
+            font-size: 14px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+            flex-shrink: 0;
+            pointer-events: auto;
+        }
+        .toggle-btn.visible { display: flex; }
+        .toggle-btn:hover { background: linear-gradient(180deg, rgba(40,40,50,0.98), rgba(30,30,40,0.98)); width: 28px; }
+        .toggle-btn .arrow { transition: transform 0.3s ease; font-size: 12px; }
+        .toggle-btn.collapsed .arrow { transform: rotate(180deg); }
+
+        .charging-widget {
+            display: none;
+            background: linear-gradient(145deg, rgba(30,30,40,0.98), rgba(20,20,30,0.98));
+            border-radius: 18px;
+            padding: 22px 27px;
+            min-width: 288px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            border: 2px solid rgba(var(--brand-rgb), 0.3);
+            transform: scale(0.9);
+            transform-origin: center right;
+            animation: slideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: auto;
+            position: relative;
+        }
+        .charging-widget.show { display: block; }
+        .charging-widget.collapsed { display: none !important; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.9) translateX(100px); }
+            to { opacity: 1; transform: scale(0.9) translateX(0); }
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: scale(0.9) translateX(0); }
+            to { opacity: 0; transform: scale(0.9) translateX(100px); }
+        }
+        .charging-widget.hide { animation: slideOut 0.3s ease-out forwards; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .charging-type { display: flex; align-items: center; gap: 9px; }
+        .icon { font-size: 22px; animation: pulse 2s ease-in-out infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .type-text { color: white; font-weight: 600; font-size: 14px; }
+        .type-subtext { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 400; }
+        .header-buttons { display: flex; align-items: center; gap: 6px; }
+
+        .header-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 27px; height: 27px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        .header-btn:hover { background: rgba(var(--brand-rgb), 0.3); }
+        .header-btn.close-btn:hover { transform: rotate(90deg); }
+        .header-btn.hide-btn { font-size: 16px; font-weight: 700; line-height: 1; }
+
+        .battery-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        .battery-display::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(var(--brand-rgb), 0.1), rgba(var(--brand-rgb), 0.1));
+            opacity: 0;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        @keyframes shimmer { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+
+        .battery-icon-container { display: flex; justify-content: center; margin-bottom: 14px; }
+        .battery-icon { position: relative; width: 54px; height: 90px; }
+        .battery-body {
+            width: 100%; height: 85%;
+            background: rgba(255,255,255,0.1);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 7px;
+            position: relative; overflow: hidden;
+        }
+        .battery-fill {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, var(--brand-gradient-from), var(--brand-color), var(--brand-gradient-to, #ffc0cb));
+            transition: height 0.3s ease;
+            box-shadow: 0 0 20px rgba(var(--brand-rgb), 0.5);
+        }
+        .battery-tip {
+            width: 40%; height: 7px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 auto 5px;
+            border-radius: 3px 3px 0 0;
+        }
+        .battery-percentage {
+            text-align: center; color: white;
+            font-size: 29px; font-weight: 700; margin-bottom: 4px;
+            text-shadow: 0 0 10px rgba(var(--brand-rgb), 0.5);
+        }
+        .battery-status { text-align: center; color: var(--brand-color); font-size: 13px; font-weight: 500; }
+
+        .charging-info { display: flex; justify-content: space-between; gap: 9px; margin-bottom: 14px; }
+        .info-box {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border-radius: 9px; padding: 11px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .info-label { color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .info-value { color: white; font-size: 14px; font-weight: 600; }
+
+        .secondary-charge {
+            background: rgba(var(--brand-rgb), 0.1);
+            border: 1px solid rgba(var(--brand-rgb), 0.3);
+            border-radius: 9px; padding: 11px; margin-bottom: 14px;
+        }
+        .secondary-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 7px; }
+        .secondary-bar-container { background: rgba(0,0,0,0.3); height: 9px; border-radius: 9px; overflow: hidden; }
+        .secondary-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--brand-gradient-from), var(--brand-color));
+            border-radius: 9px; transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(var(--brand-rgb), 0.5);
+        }
+        .secondary-percentage { color: var(--brand-color); font-size: 13px; font-weight: 600; text-align: right; margin-top: 4px; }
+
+        .action-button {
+            width: 100%; padding: 11px;
+            background: rgba(var(--brand-rgb), 0.2);
+            border: 1px solid rgba(var(--brand-rgb), 0.4);
+            border-radius: 9px;
+            color: var(--brand-color);
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+        }
+        .action-button:hover {
+            background: rgba(var(--brand-rgb), 0.3);
+            border-color: rgba(var(--brand-rgb), 0.6);
+            transform: translateY(-2px);
+        }
+
+        .charging-animation {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--brand-color), transparent);
+            animation: chargePulse 2s ease-in-out infinite;
+        }
+        @keyframes chargePulse {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .logo { text-align: center; font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 14px; letter-spacing: 2px; }
+        .keybind-hint { text-align: center; font-size: 8px; color: rgba(255,255,255,0.2); margin-top: 6px; letter-spacing: 1px; }
+
+        .completion-badge {
+            display: none;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            border-radius: 18px;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 10;
+        }
+        .completion-badge.show { display: flex; }
+        .completion-icon { font-size: 40px; margin-bottom: 8px; }
+        .completion-text { color: #4ade80; font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+    <div class="widget-wrapper" id="widgetWrapper">
+        <button class="toggle-btn" id="toggleBtn"><span class="arrow">›</span></button>
+
+        <div class="charging-widget" id="chargingWidget">
+            <div class="completion-badge" id="completionBadge">
+                <div class="completion-icon">✅</div>
+                <div class="completion-text">FULLY CHARGED</div>
+            </div>
+
+            <div class="header">
+                <div class="charging-type">
+                    <div class="icon" id="chargingIcon">🔋</div>
+                    <div>
+                        <div class="type-text" id="chargingTypeText">Charging...</div>
+                        <div class="type-subtext" id="chargingSubtext">Power Bank</div>
+                    </div>
+                </div>
+                <div class="header-buttons">
+                    <button class="header-btn hide-btn" id="hideBtn" title="Hide">−</button>
+                    <button class="header-btn close-btn" id="closeBtn" title="Stop Charging">✕</button>
+                </div>
+            </div>
+
+            <div class="battery-display">
+                <div class="battery-icon-container">
+                    <div class="battery-icon">
+                        <div class="battery-tip"></div>
+                        <div class="battery-body">
+                            <div class="battery-fill" id="batteryFill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="battery-percentage" id="batteryPercentage">0%</div>
+                <div class="battery-status" id="batteryStatus">Charging</div>
+                <div class="charging-animation"></div>
+            </div>
+
+            <div class="charging-info">
+                <div class="info-box">
+                    <div class="info-label">Charge Rate</div>
+                    <div class="info-value" id="chargeRate">+1.0%/s</div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label">Time Left</div>
+                    <div class="info-value" id="timeLeft">--</div>
+                </div>
+            </div>
+
+            <div class="secondary-charge" id="secondaryInfo" style="display: none;">
+                <div class="secondary-label" id="secondaryLabel">Power Bank Charge</div>
+                <div class="secondary-bar-container">
+                    <div class="secondary-bar" id="secondaryBar"></div>
+                </div>
+                <div class="secondary-percentage" id="secondaryPercentage">0%</div>
+            </div>
+
+            <button class="action-button" id="actionBtn">Stop Charging</button>
+            <div class="logo" id="brandLogo">FIVEOUS</div>
+            <div class="keybind-hint" id="keybindHint">BACKSPACE to hide</div>
+        </div>
+    </div>
+
+    <script>
+        let isCharging = false;
+        let isHidden = false;
+        let resourceName = 'fiveous_charger';
+        let completionTimer = null;
+
+        if (window.location.hostname !== '') {
+            const parts = window.location.pathname.split('/');
+            resourceName = parts[parts.length - 2] || 'fiveous_charger';
+        }
+
+        const widget = document.getElementById('chargingWidget');
+        const toggleBtn = document.getElementById('toggleBtn');
+
+        function applyTheme(d) {
+            const r = document.documentElement;
+            if (d.brandColor) r.style.setProperty('--brand-color', d.brandColor);
+            if (d.brandColorRGB) r.style.setProperty('--brand-rgb', d.brandColorRGB);
+            if (d.brandGradientFrom) r.style.setProperty('--brand-gradient-from', d.brandGradientFrom);
+            if (d.brandGradientTo) r.style.setProperty('--brand-gradient-to', d.brandGradientTo);
+            if (d.brandName) document.getElementById('brandLogo').textContent = d.brandName;
+            if (d.hideKeybind) document.getElementById('keybindHint').textContent = d.hideKeybind + ' to hide';
+        }
+
+        (function() {
+            const r = document.documentElement;
+            r.style.setProperty('--brand-color', '#ff69b4');
+            r.style.setProperty('--brand-rgb', '255, 105, 180');
+            r.style.setProperty('--brand-gradient-from', '#ff1493');
+            r.style.setProperty('--brand-gradient-to', '#ff69b4');
+        })();
+
+        window.addEventListener('message', function(e) {
+            const d = e.data;
+            if (d.action === 'open') openWidget(d);
+            else if (d.action === 'close') closeWidget();
+            else if (d.action === 'update') updateWidget(d);
+            else if (d.action === 'hide') hideWidget();
+            else if (d.action === 'show') showWidget();
+            else if (d.action === 'complete') completeWidget(d);
+        });
+
+        function openWidget(d) {
+            if (completionTimer) { clearTimeout(completionTimer); completionTimer = null; }
+            isCharging = true;
+            isHidden = false;
+
+            applyTheme(d);
+            document.getElementById('chargingIcon').textContent = d.icon || '🔋';
+            document.getElementById('chargingSubtext').textContent = d.label || 'Charging';
+
+            if (d.secondaryLabel && d.secondaryCharge !== undefined) {
+                document.getElementById('secondaryInfo').style.display = 'block';
+                document.getElementById('secondaryLabel').textContent = d.secondaryLabel;
+                document.getElementById('secondaryBar').style.width = d.secondaryCharge + '%';
+                document.getElementById('secondaryPercentage').textContent = Math.round(d.secondaryCharge) + '%';
+            } else {
+                document.getElementById('secondaryInfo').style.display = 'none';
+            }
+
+            document.getElementById('completionBadge').classList.remove('show');
+            updateWidget(d);
+
+            widget.classList.remove('hide', 'collapsed');
+            widget.classList.add('show');
+            toggleBtn.classList.remove('visible', 'collapsed');
+        }
+
+        function closeWidget() {
+            isCharging = false;
+            isHidden = false;
+            widget.classList.add('hide');
+            toggleBtn.classList.remove('visible', 'collapsed');
+            setTimeout(() => {
+                widget.classList.remove('show', 'hide', 'collapsed');
+                document.getElementById('completionBadge').classList.remove('show');
+            }, 300);
+        }
+
+        function hideWidget() {
+            if (!isCharging) return;
+            isHidden = true;
+            widget.classList.add('collapsed');
+            widget.classList.remove('show');
+            toggleBtn.classList.add('visible', 'collapsed');
+        }
+
+        function showWidget() {
+            if (!isCharging) return;
+            isHidden = false;
+            widget.classList.remove('collapsed');
+            widget.classList.add('show');
+            toggleBtn.classList.remove('visible', 'collapsed');
+        }
+
+        function completeWidget(d) {
+            if (isHidden) showWidget();
+
+            document.getElementById('batteryPercentage').textContent = '100%';
+            document.getElementById('batteryFill').style.height = '100%';
+            document.getElementById('batteryStatus').textContent = 'Fully Charged';
+            document.getElementById('timeLeft').textContent = 'Done';
+            document.getElementById('completionBadge').classList.add('show');
+            isCharging = false;
+
+            completionTimer = setTimeout(() => {
+                closeWidget();
+                completionTimer = null;
+            }, (d && d.duration) || 4000);
+        }
+
+        function updateWidget(d) {
+            const bat = d.battery || 0;
+            document.getElementById('batteryPercentage').textContent = Math.round(bat) + '%';
+            document.getElementById('batteryFill').style.height = bat + '%';
+            document.getElementById('batteryStatus').textContent = bat >= 100 ? 'Fully Charged' : 'Charging';
+
+            const rate = d.chargeRate || 1.0;
+            document.getElementById('chargeRate').textContent = '+' + rate.toFixed(1) + '%/s';
+            document.getElementById('timeLeft').textContent = bat < 100 ? Math.ceil((100 - bat) / rate) + 's' : 'Done';
+
+            if (d.secondaryCharge !== undefined && d.secondaryCharge !== null) {
+                document.getElementById('secondaryBar').style.width = d.secondaryCharge + '%';
+                document.getElementById('secondaryPercentage').textContent = Math.round(d.secondaryCharge) + '%';
+            }
+        }
+
+        function postNUI(endpoint) {
+            fetch('https://' + resourceName + '/' + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            }).catch(() => {});
+        }
+
+        document.getElementById('closeBtn').addEventListener('click', () => { postNUI('stopCharging'); closeWidget(); });
+        document.getElementById('actionBtn').addEventListener('click', () => { postNUI('stopCharging'); closeWidget(); });
+        document.getElementById('hideBtn').addEventListener('click', () => hideWidget());
+        toggleBtn.addEventListener('click', () => { if (isHidden) showWidget(); });
+
+        postNUI('uiReady');
+    </script>
+</body>
+</html>
