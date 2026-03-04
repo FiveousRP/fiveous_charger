@@ -1,6 +1,7 @@
 # fiveous_charger
 
 Configurable charging system for FiveM. Charge phones, power banks, batteries, drones — anything with item metadata.
+LB-Phone Charger
 
 ## Features
 
