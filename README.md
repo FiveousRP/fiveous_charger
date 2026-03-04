@@ -3,6 +3,8 @@
 Configurable charging system for FiveM. Charge phones, power banks, batteries, drones — anything with item metadata.
 LB-Phone Charger
 
+<img width="262" height="534" alt="cc6ba70fe850bac30e30f2bcbd57f4a4" src="https://github.com/user-attachments/assets/25212e50-329b-42ee-9366-f367b0700a65" />
+
 ## Features
 
 - **QBCore**, **Qbox**, **ESX**, or **standalone**
